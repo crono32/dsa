@@ -38,6 +38,11 @@
 - [Binary search](#binary-search)
     - [Binary search](#binary-search-1)
     - [On arrays](#on-arrays)
+- [Dynamic programming](#dynamic-programming)
+    - [Dynamic programming](#dynamic-programming-1)
+    - [1D problems](#1d-problems)
+    - [Multi-dimensional problems](#multi-dimensional-problems)
+    - [Matrix DP](#matrix-dp)
 
 ## Introduction
 
@@ -4308,3 +4313,858 @@ class Solution:
 To sort potions, it costs O(m⋅log ⁡m). Then, we iterate n times, performing a O(log⁡ m) binary search on each iteration. This gives us a time complexity of O((m+n)⋅log⁡m), which is much faster than O(m⋅n)because log⁡ m is small. Because we are sorting the input, some space is used depending on the sorting algorithm used by your language.
 
 Binary searching on an array is a simple tool to improve an algorithm's time complexity by a huge amount. Anytime you have a sorted array (or are able to sort an array without consequence), consider using binary search to quickly find the insertion index of a desired element.
+
+
+
+
+## Dynamic programming
+### Dynamic programming
+Dynamic programming (DP) is a problem-solving technique. Usually, problems where you use DP can only be solved with DP (in a reasonable time complexity). For many people, DP is the most feared topic. To be honest, there is a large stigma around DP. This is likely a combination of:
+
+1. If you don't know DP, then it is almost impossible to solve a DP problem, even if it's an easy one
+2. DP isn't as common in interviews - some companies even ban it, which means people have less of an incentive to learn it
+
+#### What exactly is DP?
+In short, dynamic programming is just optimized recursion. Let's say you had some recursive function that returned the answer to the original problem treating whatever you call the function with as the input. We saw this idea extensively in the tree section. For example, we would frequently define a function dfs that took a node and returned the answer to the original problem as if the input was the subtree rooted at node.
+
+The idea behind dynamic programming is the exact same. We define some recursive function, usually called dp, that returns the answer to the original problem as if the arguments you passed to it were the input.
+
+The arguments that a recursive function takes represents a state. When we looked at tree problems, we never visited a node more than once in our DFS, which means that a state was never repeated. The difference with DP is that states can be repeated, usually an exponential number of times. To avoid repeating computation, we use something called memoization. When we find the answer (the return value) for a given state, we cache that value (usually in a hash map). Then in the future, if we ever see the same state again, we can just refer to the cached value without needing to re-calculate it.
+
+>Similar to when we looked at graphs, if the range of states is known, then it may be much better in some languages to use an array to cache values instead of using hashing.
+
+Let's look at Fibonacci numbers as an example. The 0th Fibonacci number is 0, the next one is 1, and then each subsequent number is the sum of the previous two. The formula for the nth Fibonacci number is: $F_n = F_{n-1} + F_{n - 2}$​. We can write a function that finds the nth Fibonacci number:
+
+>The formula $F_n = F_{n-1} + F_{n - 2}$​ is called a recurrence relation.
+
+```python
+def fibonacci(n):
+    if n == 0:
+        return 0
+    if n == 1:
+        return 1
+    
+    return fibonacci(n - 1) + fibonacci(n - 2)
+```
+
+This algorithm has a time complexity of $O(2^n)$. This is because every call to fibonacci creates 2 more calls to fibonacci. Here's the recursion tree for fibonacci(6):
+
+<img src="./fib-tree.png" />
+
+As you can see, there is a lot of repeated computation - for example, f(4) is calculated twice, f(3) is calculated 3 times, and f(2) is calculated 5 times. At this size, it doesn't seem like a big deal. However, as n grows, the repeated computation grows exponentially. If we wanted to calculate f(7), then this entire tree would be just one side of the root.
+
+To avoid repeating computation, we can memoize the results from our function calls. Let's use a hash map to store the results and check the hash map before making any recursive calls.
+
+```python
+def fibonacci(n):
+    if n == 0:
+        return 0
+    if n == 1:
+        return 1
+
+    if n in memo:
+        return memo[n]
+    
+    memo[n] = fibonacci(n - 1) + fibonacci(n - 2)
+    return memo[n]
+
+memo = {}
+```
+This improves our time complexity to $O(n)$ - which is, of course, extremely fast compared to $O(2^n)$. The first approach is just basic recursion - by memoizing results to avoid duplicate computation, it becomes dynamic programming.
+
+#### Top-down vs. bottom-up
+This method of using recursion and memoization is also known as "top-down" dynamic programming. It is named as such because we start from the top (the original problem) and move down toward the base cases. For example, we wanted the nth Fibonacci number, so we started by calling fibonacci(n). We move down with recursion until we reach the base cases (F(0) and F(1)).
+
+Another way to approach a dynamic programming problem is with a "bottom-up" algorithm. In bottom-up, we start at the bottom (base cases) and work our way up to larger problems. This is done iteratively and also known as tabulation. Here is the bottom-up version of Fibonacci:
+
+```python
+def fibonacci(n):
+    arr = [0] * (n + 1)
+    # base case - the second Fibonacci number is 1
+    arr[1] = 1
+    for i in range(2, n + 1):
+        arr[i] = arr[i - 1] + arr[i - 2]
+    
+    return arr[n]
+```
+Top-down and bottom-up refer only to how you decide to implement your algorithm. There is fundamentally nothing different between the two approaches. Every top-down implementation can be implemented bottom-up and vice versa. The things that define a DP algorithm are the base cases and recurrence relation (which we will talk about more in the next article).
+
+There are pros and cons to both, but the main arguments for each are:
+
+- Usually, a bottom-up implementation is faster. This is because iteration has less overhead than recursion, although this is less impactful if your language implements tail recursion.
+- However, a top-down approach is usually easier to write. With recursion, the order that we visit states does not matter. With iteration, if we have a multidimensional problem, it can sometimes be difficult figuring out the correct configuration of your for loops.
+
+#### When should I consider using DP?
+Problems that should be solved with DP usually have two main characteristics:
+
+1. The problem will be asking for an optimal value (max or min) of something or the number of ways to do something.
+    - What is the minimum cost of doing ...
+    - What is the maximum profit of ...
+    - How many ways are there to ...
+    - What is the longest possible ...
+2. At each step, you need to make a "decision", and decisions affect future decisions.
+    - A decision could be picking between two elements
+    - Decisions affecting future decisions could be something like "if you take an element x, then you can't take an element y in the future"
+
+Note on the first characteristic: not all problems that are in these formats are meant to be solved with DP, and not all DP problems are in one of those formats. However, for a general guideline, these characteristics hold up very well.
+
+>To clarify the second characteristic: let's look at a classic DP problem, House Robber.
+>
+>You are planning to rob houses along a street. The ith house has nums[i] money. If you rob two houses beside each other, the alarm system will trigger and alert the police. What is the most money you can rob without alerting the police?
+
+The second characteristic is usually what differentiates greedy and DP. The idea behind greedy is that local decisions do not affect other decisions. Let's say we had nums = [2,7,9,3,1], and we wanted to be greedy. Iterating along the array, the first decision is to take the 2 or the 7, since we can't have both. If we were greedy, we would take the 7. However, now we can no longer take the 9. In fact, the optimal answer involves taking 2, 9, 1. As you can see, being greedy in our decisions affected future decisions which lead us to the wrong answer.
+
+#### State
+We briefly talked about state in earlier chapters. State refers to a set of variables that can fully describe a scenario. When we looked at tree problems, every recursive call to dfs took node, and maybe some other variables as arguments. These arguments represent the state. We'll see in the next article that the first step to creating DP algorithms is deciding on what state variables are necessary.
+
+When we talked about trees, we said that each function call to dfs would return the answer to the original problem as if the state passed to the call was the input. With DP, it's the same. A call to dp(state) should return the answer to the original problem as if state was the input.
+
+The following are common state variables that you should think about:
+
+- An index along an input string, array, or number. This is the most common state variable and will be a state variable in almost all problems, and is frequently the only state variable. With Fibonacci, the "index" refers to the current Fibonacci number. If you are dealing with an array or string, then this variable will represent the array/string up to and including this index. For example, if you had nums = [0, 1, 2, 3, 4] and you had a state variable i = 2, then it would be like if nums = [0, 1, 2] was the input.
+- A second index along an input string or array. Sometimes, you need another index variable to represent the right bound of the array. Again, if you had nums = [0, 1, 2, 3, 4] and two state variables along the input, let's say i = 1 and j = 3, then it would be like nums = [1, 2, 3] - we are only considering the input between and including i and j.
+- Explicit numerical constraints given in the problem. This will usually be given in the input as k. For example, "you are allowed to remove k obstacles". This state variable would represent how many more obstacles we are allowed to remove.
+- A boolean to describe a status. For example, "true if currently holding a package, false if not".
+
+The number of state variables used is the dimensionality of an algorithm. For example, if an algorithm uses only one variable like i, then it is one dimensional. If a problem has multiple state variables, it is multi-dimensional. Some problems might require as many as five dimensions.
+
+#### Time and space complexity of DP algorithms
+Complexity analysis for DP algorithms is very easy. Like with trees/graphs, we calculate each state only once. Therefore, if there are N possible states, and the work done at each state is F, then your time complexity will be $O(NF)$. Notice that this is the exact same argument we used in the tree and graph problems.
+
+The space complexity will be $O(N)$ - if we are doing top-down, our hash map will store all the states at the end. If we are doing bottom-up, the array we use for tabulation will be the same size as the number of states.
+
+>In many problems, the space complexity can be improved when implementing bottom-up, but not top-down. We'll see this in the rest of the chapter.
+
+To calculate the number of states N, look at each of your state variables, calculate the range of values they can take, and then multiply them together. Let's say we had some problem that needed three state variables: i, k, and holding. i is iterating over an input nums, k is given in the problem, and holding is a boolean. Then, the number of states is nums.length * k * 2. If calculating each state is $O(1)$, then the time and space complexity is $O(nk)$, where n = nums.length.
+
+
+
+
+### Framework for DP
+In this article, we will introduce a framework for solving DP problems. This framework is great for beginners as it works for any DP problem and provides a systematic way to develop algorithms, so it's a great tool to remember.
+
+>For this article, we're going to use <a href="https://leetcode.com/problems/min-cost-climbing-stairs/description/">Min Cost Climbing Stairs</a> as an example. We will start with a top-down solution.
+>
+>You are given an integer array cost where cost[i] is the cost of the ith step on a staircase. Once you pay the cost, you can either climb one or two steps. You can either start from the step with index 0, or the step with index 1. Return the minimum cost to reach the top of the floor (outside the array, not the last index of cost).
+>
+>It is recommended that you open the problem link in a new tab so you can easily follow along.
+
+#### The framework
+To create any DP algorithm, there are 3 main components.
+
+1. A function or data structure that will compute/contain the answer to the problem for any given state
+
+Since we're starting with top-down, we will be talking about a function here. This involves two parts. First, we need to decide what the function is returning. Second, we need to decide on what arguments the function should take (state variables).
+
+The problem is asking for the minimum cost to climb the stairs. So, let's define a function dp(state) that returns the minimum cost to climb the stairs for a given state.
+
+What state variables do we need? The only relevant state variable would be an index along the input, let's call it i.
+
+>A good way to think about state variables is to imagine if the problem was a real-life scenario. What information do you need to 100% describe a scenario? We certainly need to know what step we're on - that's where i comes in. What about the color of your socks? Standing on the 5th step with green socks is technically a different state than standing on the 5th step with red socks, but it doesn't change the cost of the steps, or anything relevant.
+
+Therefore, let's have a function dp(i) that returns the minimum cost to climb the stairs up to the ithith step - i.e. if the input was the subarray from index 0 up to and including i.
+
+2. A recurrence relation to transition between states
+
+A recurrence relation is an equation used to calculate states. With Fibonacci, the recurrence relation was $F_n = F_{n-1} + F_{n-2}$.
+
+In this problem, let's say we wanted to figure out the minimum cost of climbing to the 100th step. The problem states that at each step, we are allowed to take one or two steps. That means, to get to the 100th step, we must have arrived from the 99th or 98th step. Therefore, the minimum cost of climbing to the 100th step is either the minimum cost of getting to the 99th step + the cost of the 99th step, or the minimum cost of getting to the 98th step + the cost of the 98th step.
+
+dp(100) = min(dp(99) + cost[99], dp(98) + cost[98])
+
+>Because of how we defined dp in the previous step, dp(99) gives us the minimum cost of getting to the 99th step, and dp(98) gives us the minimum cost of getting to the 98th step.
+
+Or more generally:
+
+dp(i) = min(dp(i - 1) + cost[i - 1], dp(i - 2) + cost[i - 2])
+
+Which is the recurrence relation of this problem. Typically, finding the recurrence relation is the hardest part of constructing a DP algorithm. This one is relatively straightforward, but we'll see later that recurrence relations can be much more complicated.
+
+3. Base cases
+
+The recurrence relation is useless on its own. We still can't figure out dp(100) because we don't know dp(99) or dp(98). If we try to find them, we have the same problem - how can we know dp(98) if we don't know dp(97) or dp(96)? By itself, the recurrence relation will continue forever until dp(-infinity).
+
+We need base cases so that our function eventually returns actual values. The problem states that we can start at steps 0 or 1. Therefore, the base cases are:
+
+dp(0) = dp(1) = 0
+
+With these base cases, we can find dp(2). With dp(2), we can find dp(3), and so on until we have dp(98) and dp(99), then we can finally find dp(100).
+
+>Figuring out the base cases is usually pretty easy and just requires a little bit of logical thinking. Make sure to read every question carefully.
+
+#### Implementation
+Let's take the three parts of the framework and combine them for an algorithm. Don't forget to memoize the function to improve the time complexity from $O(2^n)$ to $O(n)$, where n is the length of the input array.
+
+```python
+class Solution:
+    def minCostClimbingStairs(self, cost: List[int]) -> int:
+        # 1. A function that returns the answer
+        def dp(i):
+            if i <= 1:
+                # 3. Base cases
+                return 0
+            
+            if i in memo:
+                return memo[i]
+            
+            # 2. Recurrence relation
+            memo[i] = min(dp(i - 1) + cost[i - 1], dp(i - 2) + cost[i - 2])
+            return memo[i]
+        
+        memo = {}
+        return dp(len(cost))
+```
+
+#### Converting a top-down solution to a bottom-up one
+As discussed in the previous article, there are some benefits of using bottom-up instead of top-down. Sometimes, an interviewer may ask for both approaches. The following is a general method for converting a top-down recursive solution to a bottom-up iterative one.
+
+1. Start by implementing the top-down approach.
+
+2. Initialize an array dp that is sized according to the state variables. For example, let's say the input to the problem was an array nums and an integer k that represents the maximum number of actions allowed. Your array dp would be 2D with one dimension of length nums.length and the other of length k. In the top-down approach, we had a function dp. We want these two to be equivalent. For example, the value of dp(4, 6) can now be found in dp[4][6].
+
+3. Set your base cases, same as the ones you are using in your top-down function. In the example we just looked at, we had dp(0) = dp(1) = 0. We can initialize our dp array values to 0 to implicitly set this base case. As you'll see soon, other problems will have more complicated base cases.
+
+4. Write a for-loop(s) that iterate over your state variables. If you have multiple state variables, you will need nested for-loops. These loops should start iterating from the base cases and end at the answer state.
+
+5. Now, each iteration of the inner-most loop represents a given state, and is equivalent to a function call to the same state in top-down. Copy-paste the logic from your function into the for-loop and change the function calls to accessing your array. All dp(...) changes into dp[...].
+
+6. We're done! dp is now an array populated with the answer to the original problem for all possible states. Return the answer to the original problem, by changing return dp(...) to return dp[...].
+
+Here's a bottom-up implementation of the same algorithm from above.
+```python
+class Solution:
+    def minCostClimbingStairs(self, cost: List[int]) -> int:
+        n = len(cost)
+        # Step 2
+        dp = [0] * (n + 1)
+        
+        # Step 3: Base cases are implicitly defined as they are 0
+
+        # Step 4
+        for i in range(2, n + 1):
+            # Step 5
+            dp[i] = min(dp[i - 1] + cost[i - 1], dp[i - 2] + cost[i - 2])
+        
+        # Step 6
+        return dp[n]
+```
+
+Let's jump into some example DP problems in the next article.
+
+
+
+### 1D problems
+In this article, we're going to look at example DP problems that can be solved with only one state variable. For all problems, we'll start with a top-down approach, and then include the bottom-up implementation afterward.
+
+>Example 1: 198. House Robber
+>
+>You are planning to rob houses along a street. The ith house has nums[i] money. If you rob two houses beside each other, the alarm system will trigger and alert the police. What is the most money you can rob without alerting the police?
+
+First things first: what will our function return and what arguments will it take? The return value should be the maximum money that can be robbed since that is what the problem is asking for. What about state variables? We definitely need i - the maximum money that can be robbed if we only consider up to and including house i. Since we aren't allowed to rob the previous house, should we also include a boolean prev that indicates if we robbed the previous house? We certainly could include that - but it's not necessary.
+
+We can consider the case of having robbed the previous house in our recurrence relation. At house i, what choices do we have? There are two possibilities:
+
+1. We rob the house. This means we gain nums[i] money, but we cannot rob the previous house. If we need to skip the previous house, that means we must have arrived from 2 houses back. The amount of money we had 2 houses ago is dp(i - 2). Therefore, if we rob the ith house, we will have dp(i - 2) + nums[i] money.
+2. We don't rob the house. This means we don't gain any money, but we could have arrived from the previous house, which means we will have dp(i - 1) money.
+
+We should always choose the maximum profit. Therefore, our recurrence relation is dp(i) = max(dp(i - 1), dp(i - 2) + nums[i]).
+
+What are the base cases? If there is only one house, we may as well rob it. If there are two houses, we can only rob one, so we should rob the one with more money. The base cases are:
+
+dp(0) = nums[0] and dp(1) = max(nums[0], nums[1])
+
+We need two base cases because the recurrence on dp(1) would need dp(-1) if we didn't handle dp(1) as a base case.
+
+```python
+class Solution:
+    def rob(self, nums: List[int]) -> int:
+        if len(nums) == 1:
+            # to prevent out of bounds error
+            return nums[0]
+        
+        def dp(i):
+            # Base cases
+            if i == 0:
+                return nums[0]
+            if i == 1:
+                return max(nums[0], nums[1])
+            
+            if i in memo:
+                return memo[i]
+            
+            # Recurrence relation
+            memo[i] = max(dp(i - 1), dp(i - 2) + nums[i])
+            return memo[i]
+        
+        memo = {}
+        return dp(len(nums) - 1)
+```
+
+In Python, the functools module provides super useful wrappers that automatically memoize functions for us. We just need to add cache above the function.
+
+```python
+from functools import cache
+
+class Solution:
+    def rob(self, nums: List[int]) -> int:
+        @cache
+        def dp(i):
+            # Base cases
+            if i == 0:
+                return nums[0]
+            if i == 1:
+                return max(nums[0], nums[1])
+
+            # Recurrence relation
+            return max(dp(i - 1), dp(i - 2) + nums[i])
+
+        return dp(len(nums) - 1)
+```
+
+The time complexity of this algorithm is $O(n)$, where n is the length of the input array, because we only visit each state once. At each state, applying the recurrence relation is $O(1)$. The space complexity is also $O(n)$ because that's how much space we need to cache the results for each state.
+
+Here's the bottom-up implementation:
+```python
+class Solution:
+    def rob(self, nums: List[int]) -> int:
+        # To avoid out of bounds error from setting base case
+        if len(nums) == 1:
+            return nums[0]
+        
+        n = len(nums)
+        dp = [0] * n
+        
+        # Base cases
+        dp[0] = nums[0]
+        dp[1] = max(nums[0], nums[1])
+        
+        for i in range(2, n):
+            # Recurrence relation
+            dp[i] = max(dp[i - 1], dp[i - 2] + nums[i])
+        
+        return dp[n - 1]
+```
+
+**Improving the space complexity**
+
+Actually, we can do better than $O(n)$ space. When we are at state i, we only care about the previous two states. To get to state 100, we needed to go through 2 - 99, but once we're actually at 100, we don't care about 2 - 97. In the bottom-up implementation, we can replace the array with two variables that just keep track of the previous two states. arr[0] becomes obsolete once we get to arr[3] etc.
+
+```python
+class Solution:
+    def rob(self, nums: List[int]) -> int:
+        # To avoid out of bounds error from setting base case
+        if len(nums) == 1:
+            return nums[0]
+        
+        n = len(nums)
+
+        # Base cases
+        back_two = nums[0]
+        back_one = max(nums[0], nums[1])
+        
+        for i in range(2, n):
+            # back_two becomes back_one, and back_one gets updated
+            back_one, back_two = max(back_one, back_two + nums[i]), back_one
+
+        return back_one
+```
+
+
+>This algorithm has the same time complexity, but an $O(1)$ space complexity!
+
+This optimization is possible whenever the recurrence relation is static - it doesn't change between inputs and it only cares about a static number of states. Unfortunately, this optimization is only possible for bottom-up - the recursion call stack uses $O(n)$ space and can't be avoided, even if we didn't need the hash map.
+
+
+
+>Example 2: 300. Longest Increasing Subsequence
+>
+>Given an integer array nums, return the length of the longest strictly increasing subsequence.
+
+How can we tell that this problem should be solved with DP? First, it asks for a maximum length. Second, whenever we decide to take an element as part of a subsequence, it changes the numbers that we can take in the future. If we have nums = [1, 2, 5, 3, 4] and iterate from left to right, how do we decide if we should take the 5 or not? If we take it, our length increases which is what we want, but then it stops us from taking the 3 and 4.
+
+Step 1: figure out what the function should return and what variables it should take. The problem is asking for the longest increasing subsequence (LIS), so let's have the function return the length of the LIS. For state variables, the problem doesn't have any inputs other than nums, so let's just stick with an index variable i. We will have our function dp(i) return the LIS that ends with the ithith element.
+
+If we are at the ith element, how can we leverage information about the previous states to figure out the LIS that uses the current element? First of all, we can only use the current element if the previous element was less than the current number. So we will only consider indices j in the range [0, i), where nums[i] > nums[j]. Because dp(j) returns the LIS that ends with the jth element, and nums[i] > nums[j], that means we can take whatever subsequence ends at j and just add nums[i] to it, giving us a length of dp(j) + 1. This gives us our recurrence relation:
+
+dp(i) = max(dp(j) + 1) for all j: [0, i), if nums[i] > nums[j]
+
+What are the base cases? Every element by itself is technically an increasing subsequence with length 1.
+
+By combining these three components, we can find the length of the LIS that ends at each index. The answer to the original problem will be the maximum of these.
+
+Let's say we're at index 7 and the current value is 5. We're interested in forming a strictly increasing subsequence where this 5 is the final value.
+
+Because the 5 needs to be the final value, let's check the values before the current index, at indices 0 to 6.
+
+We find that nums[5] = 4, which of course is less than the current value. We also find that dp[5] = 3. By definition of dp, that means there is an increasing subsequence of length 3 that ends with nums[5].
+
+Because nums[7] > nums[5], we can take that subsequence and just append nums[7] to it, forming an increasing subsequence of length 4. Now, we don't need to know what the subsequence ending at nums[5] is, but we don't care - we are only concerned about the length.
+
+To calculate dp[7], we need to check all the indices from 0 to 6.
+
+How did we know the value of dp[5]? Because it was a smaller subproblem. We start by solving dp[0] (which must be the base case 1), then dp[1] (which we can calculate from dp[0]), and so on.
+
+```python
+class Solution:
+    def lengthOfLIS(self, nums: List[int]) -> int:
+        @cache
+        def dp(i):
+            ans = 1 # Base case
+
+            # Recurrence relation
+            for j in range(i):
+                if nums[i] > nums[j]:
+                    ans = max(ans, dp(j) + 1)
+            
+            return ans
+
+        return max(dp(i) for i in range(len(nums)))
+```
+
+And a bottom-up implementation:
+
+```python
+class Solution:
+    def lengthOfLIS(self, nums: List[int]) -> int:
+        dp = [1] * len(nums)
+        for i in range(len(nums)):
+            for j in range(i):
+                if nums[i] > nums[j]:
+                    dp[i] = max(dp[i], dp[j] + 1)
+
+        return max(dp)
+```
+
+Because of the nested loop, this algorithm has a time complexity of $O(n^2)$, where n is the length of the input array. Notice that this is because the work done at each state is linear with n, and there are n states. The space complexity is equal to the number of states, $O(n)$, and can't be improved in bottom-up because the recurrence relation is not static.
+
+
+
+>Example 3: 2140. Solving Questions With Brainpower
+>
+>You are given a 0-indexed 2D integer array questions where questions[i] = [points<sub>i</sub>,brainpower<sub>i</sub>​]. You have to process the questions in order. Solving question i will earn you points<sub>i</sub>​ points but you will be unable to solve each of the next brainpower<sub>i</sub>​ questions. If you skip question i, you get to decide on the next question. Return the maximum points you can score.
+
+How can we tell this problem should be solved with DP? First, it is asking for a maximum score. Second, at every question we need to make a decision: take or skip, and these decisions affect future decisions. If we decide to take a question, it prevents us from taking some future questions.
+
+As you may expect by now, we can define a function dp that returns the maximum score we can achieve. What information do we need at each state (other than an index variable i to indicate the current question we are on)? We could include an integer that represents how many more questions we need to skip until we can start solving questions again, but similar to with house robber, we can encode this information in our recurrence relation, so we'll just stick with dp(i) returning the maximum score.
+
+If we are at the ith question, we have two options:
+
+- Solve the question. We gain questions[i][0] points, but we cannot solve the next i questions. The next question we can solve is at index j = i + questions[i][1] + 1. Therefore, the total score is questions[i][0] + dp(j).
+- Skip the question. Like the problem says, this means we move on to the next question and make another decision there. The score is dp(i + 1).
+
+This gives us our recurrence relation:
+
+dp(i) = max(questions[i][0] + dp(j), dp(i + 1)), where j = i + questions[i][1] + 1
+
+Since we are actually moving forward through the array instead of backward, this means the base case must be at the end. If i >= questions.length, that means the exam is over, so we can't score any more points. Therefore, the base case is:
+
+dp(i) = 0, when i >= n
+
+```python
+class Solution:
+    def mostPoints(self, questions: List[List[int]]) -> int:
+        @cache
+        def dp(i):
+            if i >= len(questions):
+                return 0
+            
+            j = i + questions[i][1] + 1
+            return max(questions[i][0] + dp(j), dp(i + 1))
+    
+        return dp(0)
+```
+
+And the bottom-up implementation:
+
+```python
+class Solution:
+    def mostPoints(self, questions: List[List[int]]) -> int:
+        n = len(questions)
+        dp = [0] * (n + 1) # n + 1 to avoid out of bounds
+        
+        for i in range(n - 1, -1, -1):
+            j = i + questions[i][1] + 1
+            # need to make sure we don't go out of bounds
+            dp[i] = max(questions[i][0] + dp[min(j, n)], dp[i + 1])
+        
+        return dp[0]
+```
+
+There are $O(n)$ states, where n is the length of the input array, and each state costs $O(1)$ to compute, once again giving us a time and space complexity of $O(n)$. Because the recurrence relation is not static (it depends on questions[i][1]), we cannot improve the space complexity in the bottom-up implementation.
+
+In all these examples, the only state variable we needed was an index i to move along the input. Keeping this in mind, try the next few practice problems.
+
+Problems:  
+https://leetcode.com/problems/climbing-stairs/description/  
+https://leetcode.com/problems/min-cost-climbing-stairs/description/  
+https://leetcode.com/problems/coin-change/description/  
+
+
+
+### Multi-dimensional problems
+In the previous article, we only looked at problems with one state variable. In this article, we'll look at problems that use multiple state variables, aka multidimensional DP algorithms.
+
+>Example 1: 1143. Longest Common Subsequence
+>
+>Given two strings text1 and text2, return the length of their longest common subsequence.
+>
+>For example, given text1 = "abcde" and text2 = "ace", return 3. Both strings share "ace" as a subsequence.
+
+How do we know this problem should be solved with DP? First, it's asking for the longest of something. Second, deciding to use a letter or not use a letter affects the future letters we can take.
+
+As the problem is asking for the length of the longest common subsequence (LCS), let's have our function dp return the length of the LCS. We need two index variables this time, one for each string - i for text1 and j for text2. We'll have dp(i, j) return the length of the longest common subsequence when we start at the ith character of text1 and the jth character of text2.
+
+At each pair (i, j) there are two possibilities:
+
+1. text1[i] = text2[j]. We found a match in characters and should use it to increase the length. After matching the characters, we need to move to the next character in both strings. dp(i, j) = 1 + dp(i + 1, j + 1). There is no point in not using a match because we can't increase our length by more than 1 at any given step, so when we have the opportunity to, we should always take it.
+
+2. text1[i] != text2[j]. Now, we need to make a decision. Either we can move to the next character in text1 or move to the next character in text2. We may as well try both - so in this case, dp(i, j) = max(dp(i + 1, j), dp(i, j + 1)).
+
+These 2 cases form our recurrence relation. What about base cases? If i = text1.length or j = text2.length, then one of the strings has been exhausted, and since no characters are remaining, there cannot be any common characters. Return 0.
+
+```python
+class Solution:
+    def longestCommonSubsequence(self, text1: str, text2: str) -> int:
+        @cache
+        def dp(i, j):
+            if i == len(text1) or j == len(text2):
+                return 0
+            
+            if text1[i] == text2[j]:
+                return 1 + dp(i + 1, j + 1)
+            
+            return max(dp(i + 1, j), dp(i, j + 1))
+        
+        return dp(0, 0)
+```
+
+Bottom-up, remember to start iterating from the base cases:
+
+```python
+class Solution:
+    def longestCommonSubsequence(self, text1: str, text2: str) -> int:
+        n = len(text1)
+        m = len(text2)
+        dp = [[0] * (m + 1) for _ in range(n + 1)]
+        
+        for i in range(n - 1, -1, -1):
+            for j in range(m - 1, -1, -1):
+                if text1[i] == text2[j]:
+                    dp[i][j] = 1 + dp[i + 1][j + 1]
+                else:
+                    dp[i][j] = max(dp[i + 1][j], dp[i][j + 1])
+        
+        return dp[0][0]
+```
+
+Because the work done at each state is $O(1)$, this algorithm has a time and space complexity of $O(n⋅m)$, where n = text1.length and m = text2.length.
+
+
+
+>Example 2: 188. Best Time to Buy and Sell Stock IV
+>
+>You are given an integer array prices where prices[i] is the price of a given stock on the ith day, and an integer k. You can buy the stock and sell it, but you can only hold on to one unit of stock at any given time. Find the maximum profit you can achieve with at most k transactions.
+
+In this problem, there are lots of decisions to make. Should you buy today? If you do, you can't buy tomorrow, or at all until you sell. Should you sell? If you do, you can't sell until you buy again. Also, every time you buy or sell, you are using one of your limited number of transactions. With all these decisions to make, DP is a clear choice.
+
+Again, our dp function should return the answer - so let's have it return the maximum profit that can be achieved. What information do we need at each state? First, we of course need to know what day it is. We can use our usual index variable i to track this. Next, we need to know if we are currently holding any stock. Let's have holding be a boolean that represents if we are holding stock. Lastly, the problem has an explicit numerical constraint - the number of transactions we are allowed. Let's have an integer remain that represents how many transactions we have remaining.
+
+We will have dp(i, holding, remain) return the maximum profit we can achieve if we are currently on day i with remain transactions remaining, and holding indicating if we currently hold stock. The answer will be dp(0, false, k) which will return the maximum profit we can achieve starting on day 0, not holding stock, with k transactions remaining.
+
+At each state, what decisions do we have? If we are not holding stock, we can either buy today or skip. If we buy, then our profit is -prices[i] + dp(i + 1, true, remain). We spend prices[i] to buy the stock. Then we move to the next day (i + 1), we are now holding stock (true), and we haven't completed a transaction yet so remain stays the same.
+
+If we are holding stock, we can either sell today or skip. If we sell, then our profit is prices[i] + dp(i + 1, false, remain - 1). We gain prices[i] money. Then we move to the next day (i + 1), we are no longer holding stock (false), and we used up one of our transactions (remain - 1).
+
+In both cases, if we decide to skip, then our profit is dp(i + 1, holding, remain). We just move to the next day without changing anything else. Therefore, our recurrence relation is:
+
+dp(i, holding, remain) = max(skip, buy, sell) where
+
+skip = dp(i + 1, holding, remain),
+
+buy = -prices[i] + dp(i + 1, true, remain) and only considered if holding = false,
+
+sell = prices[i] + dp(i + 1, false, remain - 1) and only considered if holding = true.
+
+What are the base cases? If we reach the end of the input (i = prices.length), then we can't make any more transactions, so return 0. If we run out of transactions (k = 0), then we also cannot make any more transactions, so return 0.
+
+>For holding, we can use 0 to represent false and 1 to represent true as well.
+
+```python
+class Solution:
+    def maxProfit(self, k: int, prices: List[int]) -> int:
+        @cache
+        def dp(i, holding, remain):
+            if i == len(prices) or remain == 0:
+                return 0
+            
+            ans = dp(i + 1, holding, remain)
+            if holding:
+                ans = max(ans, prices[i] + dp(i + 1, False, remain - 1))
+            else:
+                ans = max(ans, -prices[i] + dp(i + 1, True, remain))
+            
+            return ans
+        
+        return dp(0, False, k)
+```
+
+Here's the bottom-up implementation. You can see that configuring the for loops can be tricky. The important thing to remember is that we need to start iterating from the base cases, so we start iterating i from n and remain from 1, where n = prices.length.
+
+```python
+class Solution:
+    def maxProfit(self, k: int, prices: List[int]) -> int:
+        n = len(prices)
+        dp = [[[0] * (k + 1) for _ in range(2)] for __ in range(n + 1)]
+        for i in range(n - 1, -1, -1):
+            for remain in range(1, k + 1):
+                for holding in range(2):
+                    ans = dp[i + 1][holding][remain]
+                    if holding:
+                        ans = max(ans, prices[i] + dp[i + 1][0][remain - 1])
+                    else:
+                        ans = max(ans, -prices[i] + dp[i + 1][1][remain])
+                
+                    dp[i][holding][remain] = ans
+                
+        return dp[0][0][k]
+```
+
+The work done at each state is $O(1)$, so the time and space complexity is equal to the number of states. The product of the range of each of the state variables is the number of states - which gives us a time and space complexity of $O(n⋅k)$. holding is constant, the n comes from i, and the k comes from remain.
+
+
+
+>Example 3: 2218. Maximum Value of K Coins From Piles
+>
+>There are n piles of coins on a table. Each pile consists of a positive number of coins of assorted denominations. In one move, you can choose any coin on top of any pile, remove it, and add it to your wallet. Given a list piles, where piles[i] is a list of integers denoting the composition of the ith pile from top to bottom, and a positive integer k, return the maximum total value of coins you can have in your wallet if you choose exactly k coins optimally.
+
+You know the drill by now - we'll use a function dp that returns the most money we can take. We have our usual index variable i that can represent the current pile we are on, and the problem also has the explicit numerical constraint k, so we'll use another state variable remain that represents how many more coins we can take. So we have dp(i, remain) which returns the maximum value of coins we can take starting from the ith pile with remain moves remaining.
+
+At the ith pile, we can either skip the pile or take some coins. If we skip, then the score is dp(i + 1, remain). If we don't skip, we can choose how many coins to take. If we take coins up to the jth coin, then the score will be equal to the sum of piles[i][:j] plus dp(i + 1, remain - j - 1). We just need to make sure that we don't take more than remain coins.
+
+At every state, we need to try all possibilities. In a given state, we can use an integer variable curr to track the value of the coins we have taken from the current pile, then iterate over the pile and find the maximum score possible. The recurrence relation is:
+
+dp(i, remain) = max(skip, take), where
+
+skip = dp(i + 1, remain), and
+
+take = max( sum(piles[i][:j]) + dp(i + 1, remain - j - 1) for j from 0 to min(remain, piles[i].length) )
+
+This looks scary, but it becomes simpler when you look at each term on its own. sum(piles[i][:j]) is the value of the coins we have taken at the current pile, j + 1 is the number of coins we have taken, so that leaves us with remain - j - 1 moves, and min(remain, piles[i].length) is just to make sure that we don't take more coins than we are allowed to.
+
+What are our base cases? If we either reach the end of the input (no piles left) or remain = 0 (can't take any more coins), then the maximum score we can achieve is 0.
+
+```python
+class Solution:
+    def maxValueOfCoins(self, piles: List[List[int]], k: int) -> int:
+        @cache
+        def dp(i, remain):
+            if i == len(piles) or remain == 0:
+                return 0
+            
+            ans = dp(i + 1, remain) # skip this pile
+            curr = 0
+            for j in range(min(remain, len(piles[i]))):
+                curr += piles[i][j]
+                ans = max(ans, curr + dp(i + 1, remain - j - 1))
+            
+            return ans
+
+        return dp(0, k)
+```
+
+And the bottom-up solution, remember to iterate starting from the base cases i = n and remain = 0:
+
+```python
+class Solution:
+    def maxValueOfCoins(self, piles: List[List[int]], k: int) -> int:
+        n = len(piles)
+        dp = [[0] * (k + 1) for _ in range(n + 1)]
+        for i in range(n - 1, -1, -1):
+            for remain in range(1, k + 1):
+                dp[i][remain] = dp[i + 1][remain] # skip this pile
+                curr = 0
+                for j in range(min(remain, len(piles[i]))):
+                    curr += piles[i][j]
+                    dp[i][remain] = max(dp[i][remain], curr + dp[i + 1][remain - j - 1])
+
+        return dp[0][k]
+```
+
+Let's say that the average number of coins per pile piles[i].length is x. There are $O(n⋅k)$ states, where n is the number of piles, and at each state, we have a for loop that iterates x times. This gives us a time complexity of $O(n⋅k⋅x)$ and a space complexity of $O(n⋅k)$.
+
+Dynamic programming problems can be daunting - but by using the framework and thinking carefully about each component, the algorithms can be constructed in a systematic way. Try the next few practice problems before moving on.
+
+
+Problems:  
+https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-transaction-fee/description/  
+https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/description/  
+
+
+### Matrix DP
+Dynamic programming on a matrix is a common pattern. Typically, the matrix can be modeled as a graph, exactly like the ones we saw in the trees and graphs chapter. We can treat each square as a node and there will be edges along adjacent squares. Let's look at some examples.
+
+>Example 1: 62. Unique Paths
+>
+>There is a robot on an m x n grid. The robot is initially located at the top-left corner and wants to move to the bottom-right corner. The robot can only move either down or right. Given m and n, return the number of possible unique paths that the robot can take to reach the bottom-right corner.
+
+As expected when using the framework, we can have a function dp return the number of unique paths. What variables do we need to describe a state? We just need to know our position - let's say row and col. So dp(row, col) will return the number of paths that can be used to reach (row, col) from (0, 0). We want to reach the bottom right, which is (m - 1, n - 1), so the answer is dp(m - 1, n - 1).
+
+If we are at (row, col), how could we have gotten here? We are only allowed to move down or right, so we must have arrived from either the left or up. The square above us is row - 1, col and the square to the left of us is row, col - 1. Therefore, the number of ways to reach row, col is the sum of the number of ways to reach row - 1, col and row, col - 1.
+
+This gives us our recurrence relation:
+
+dp(row, col) = dp(row - 1, col) + dp(row, col - 1), making sure to stay in bounds
+
+What is the base case? There is only one "way" to get to (0, 0) - by starting there. The base case is:
+
+dp(0, 0) = 1
+
+```python
+class Solution:
+    def uniquePaths(self, m: int, n: int) -> int:
+        @cache
+        def dp(row, col):
+            if row + col == 0:
+                return 1 # Base case
+            ways = 0
+            if row > 0:
+                ways += dp(row - 1, col)
+            if col > 0:
+                ways += dp(row, col - 1)
+            
+            return ways
+        
+        return dp(m - 1, n - 1)
+```
+
+Bottom-up:
+
+```python
+class Solution:
+    def uniquePaths(self, m: int, n: int) -> int:
+        dp = [[0] * n for _ in range(m)]
+        dp[0][0] = 1
+        
+        for row in range(m):
+            for col in range(n):
+                if row > 0:
+                    dp[row][col] += dp[row - 1][col]
+                if col > 0:
+                    dp[row][col] += dp[row][col - 1]
+
+        return dp[m - 1][n - 1]
+```
+
+As expected, the time and space complexity are both $O(n⋅m)$ as the work done at each state is $O(1)$.
+
+However, with the bottom-up approach, we can improve the space complexity to $O(n)$. This works because we have a static recurrence relation that depends only on the previous row and column. We can iterate one row at a time, storing the previous row. To find dp[row - 1][col] we just reference the stored row, and to find dp[row][col - 1] we just reference the previous square in the current row.
+
+```python
+class Solution:
+    def uniquePaths(self, m: int, n: int) -> int:
+        dp = [0] * n
+        dp[0] = 1
+        
+        for _ in range(m):
+            next_row = [0] * n
+            for col in range(n):
+                next_row[col] += dp[col]
+                if col > 0:
+                    next_row[col] += next_row[col - 1]
+                
+            dp = next_row
+
+        return dp[n - 1]
+```
+
+
+
+>Example 2: 64. Minimum Path Sum
+>
+>Given a m x n grid filled with non-negative numbers, find a path from top left to bottom right, which minimizes the sum of all numbers along its path. Return this sum. You can only move down or right.
+
+Just like in the previous example, we have a matrix, start in the top left, want to reach the bottom right, and can only move down or right (this is a very common scenario). This time, we want to minimize the sum of numbers we visit.
+
+Let's have our dp function be similar to the previous example. Let's have dp(row, col) return the minimum path sum to get from (0, 0) to (row, col). Then, the answer is once again dp(m - 1, n - 1). If we are at (row, col), we must have arrived from (row - 1, col) or (row, col - 1). Therefore, before reaching row, col we either had a sum of dp(row - 1, col) or dp(row, col - 1) already. By being at (row, col), we are also adding grid[row][col] to our current sum. Therefore, we have a recurrence of:
+
+dp(row, col) = grid[row][col] + min(dp(row - 1, col), dp(row, col - 1)), making sure to stay in bounds.
+
+The base case is again the starting square. We start at (0, 0) with a path sum of grid[0][0].
+
+```python
+class Solution:
+    def minPathSum(self, grid: List[List[int]]) -> int:
+        @cache
+        def dp(row, col):
+            if row + col == 0:
+                return grid[row][col]
+            
+            ans = float("inf")
+            if row > 0:
+                ans = min(ans, dp(row - 1, col))
+            if col > 0:
+                ans = min(ans, dp(row, col - 1))
+            
+            return grid[row][col] + ans
+            
+        m = len(grid)
+        n = len(grid[0])
+        return dp(m - 1, n - 1)
+```
+
+Bottom-up:
+
+```python
+class Solution:
+    def minPathSum(self, grid: List[List[int]]) -> int:
+        m = len(grid)
+        n = len(grid[0])
+        dp = [[0] * n for _ in range(m)]
+        dp[0][0] = grid[0][0]
+        
+        for row in range(m):
+            for col in range(n):
+                if row + col == 0:
+                    continue
+                
+                ans = float("inf")
+                if row > 0:
+                    ans = min(ans, dp[row - 1][col])
+                if col > 0:
+                    ans = min(ans, dp[row][col - 1])
+                
+                dp[row][col] = grid[row][col] + ans
+                
+        
+        return dp[m - 1][n - 1]
+```
+
+The situation of the time and space complexity is the exact same for both examples. It is $O(m⋅n)$, but we can improve to $O(n)$ using bottom-up since we are iterating row by row.
+
+```python
+class Solution:
+    def minPathSum(self, grid: List[List[int]]) -> int:
+        m = len(grid)
+        n = len(grid[0])
+        dp = [float("inf")] * n
+        dp[0] = 0
+
+        for row in range(m):
+            next_row = [0] * n
+            for col in range(n):
+                next_row[col] = dp[col]
+                if col > 0:
+                    next_row[col] = min(next_row[col], next_row[col - 1])
+                
+                next_row[col] += grid[row][col]
+
+            dp = next_row
+
+        return dp[n - 1]
+```
+Those are all the DP problems we'll be looking at in this chapter. Try these next practice problems before moving on to the DP quiz. Again, DP problems are not super common in interviews, but the most important thing is that you understand how to approach them (the framework really helps!).
+
+Problems:  
+https://leetcode.com/problems/unique-paths-ii/description/  
+https://leetcode.com/problems/minimum-falling-path-sum/description/
+
