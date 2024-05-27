@@ -32,6 +32,9 @@
     - [Graphs - DFS](#graphs---dfs)
     - [Graphs - BFS](#graphs---bfs)
     - [Implicit graphs](#implicit-graphs)
+- [Heaps](#heaps)
+    - [Heap examples](#heap-examples)
+    - [Top k](#top-k)
 - [Greedy](#greedy)
     - [Greedy algorithms](#greedy-algorithms)
     - [Example greedy problems](#example-greedy-problems)
@@ -39,10 +42,6 @@
     - [Binary search](#binary-search-1)
     - [On arrays](#on-arrays)
 - [Dynamic programming](#dynamic-programming)
-    - [Dynamic programming](#dynamic-programming-1)
-    - [1D problems](#1d-problems)
-    - [Multi-dimensional problems](#multi-dimensional-problems)
-    - [Matrix DP](#matrix-dp)
 
 ## Introduction
 
@@ -3959,6 +3958,290 @@ class Solution:
 Technically, the time complexity of this algorithm is O(d), where d = deadends.length for converting deadends into a set. This is because everything else in the problem is constant (4 slots, 10 digits). However, if the lock had a variable number of slots, let's say n, then this changes our time complexity to O(10^n⋅n^2+d). There are 10n10n different states because each slot has 10 options. At each state, we perform O(n^2) work because we loop over the n slots while performing string concatenation, which is O(n) for immutable strings.
 
 
+
+## Heaps
+### Heaps
+A heap is a data structure that is an implementation of the priority queue.
+
+Note that a priority queue is an abstract data structure. A heap is one of many ways to implement a priority queue. However, people often use the two terms interchangeably. In this course, we will use the term "heap".
+
+A heap is a container that stores elements, and supports the following operations:
+
+- Add an element in O(log⁡n)
+- Remove the minimum element in O(log⁡n)
+- Find the minimum element in O(1)
+
+>A heap can also find the max elements instead of the min elements. If a heap is configured to find/remove the min element, it's called a min heap. If it's configured to find/remove the max element, it's called a max heap.
+
+The ability to find the max/min element in constant time, while only needing logarithmic time to maintain this ability through changes makes a heap an extremely powerful data structure.
+
+#### How is a heap implemented?
+Like a hash map, all major programming languages will have support for a heap, so you don't need to implement it yourself. In terms of solving algorithm problems, you only really care about the interface, not how it is implemented. But like with hash maps, it's still good to understand the implementation in case you are asked about it in an interview.
+
+>For brevity, we'll talk about min heaps in this article, although the logic is the same for max heaps.
+
+There are multiple ways to implement a heap, although the most popular way is called a binary heap using an array. In the trees and graphs chapter, we saw that binary trees are typically implemented with a Node object.
+
+A binary heap implements a binary tree, but with only an array. The idea is that each element in the array is a node in the tree. The smallest element in the tree is the root, and the following property is maintained at every node: if A is the parent of B, then A.val <= B.val. Notice that this property directly implies that the root is the smallest element.
+
+>Another constraint is that the tree must be a <a href="https://en.wikipedia.org/wiki/Binary_tree#complete">complete tree</a>.
+
+The parent-child relationships are done using math with the indices. The first element at index 0 is the root, then the elements at indices 1 and 2 are the root's children, the elements at indices 3 and 4 are the children of the element at index 1 and the elements at indices 5 and 6 are the children of the element at index 2, and so on. If a node is at index i, then its children are at indices 2i + 1 and 2i + 2. When elements are added or removed, operations are done to maintain the aforementioned property of parent.val <= child.val. The number of operations needed scales logarithmically with the number of elements in the heap, and the process is known as "bubbling up".
+
+<img src="./heaps-1.png" width="400"/>
+
+
+
+>An existing array of elements can also be converted into a heap in linear time, although the process is complicated. Luckily, some major programming languages have built-in methods to do this.
+>Remember: you shouldn't worry too much about how heaps are implemented. The important thing is that you understand the interface. We have included implementation details in this article for the sake of completeness.
+
+In many problems, using a heap can improve an algorithm's time complexity from O(n^2) to O(n⋅log⁡n), which is a massive improvement (for n = 1,000,000, this is 50,000 times faster). A heap is a great option whenever you need to find the maximum or minimum of something repeatedly.
+
+#### Interface guide
+Here's a quick runthrough of the interface for a heap in major languages:
+
+>Note: some languages implement a min heap by default, while some implement a max heap by default.  
+>If you're dealing with numbers and you want to deal with the opposite type of heap that your language implements, an easy way to do this is to multiply all numbers by -1.
+
+```python
+# In Python, we will use the heapq module
+# Note: heapq only implements min heaps
+from heapq import *
+
+# Declaration: heapq does not give you a heap data structure.
+# You just use a normal list, and heapq provides you with
+# methods that can be used on this list to perform heap operations
+heap = []
+
+# Add to heap
+heappush(heap, 1)
+heappush(heap, 2)
+heappush(heap, 3)
+
+# Check minimum element
+heap[0] # 1
+
+# Pop minimum element
+heappop(heap) # 1
+
+# Get size
+len(heap) # 2
+
+# Bonus: convert a list to a heap in linear time
+nums = [43, 2, 13, 634, 120]
+heapify(nums)
+
+# Now, you can use heappush and heappop on nums
+# and nums[0] will always be the minimum element
+```
+
+
+### Heap examples
+A heap is an amazing tool whenever you need to repeatedly find the maximum or minimum element. Let's look at some example problems.
+
+>Example 1: 1046. Last Stone Weight
+>
+>You are given an array of integers stones where stones[i] is the weight of the ithith stone. On each turn, we choose the heaviest two stones and smash them together. Suppose the heaviest two stones have weights x and y with x <= y. If x == y, then both stones are destroyed. If x != y, then x is destroyed and y loses x weight. Return the weight of the last remaining stone, or 0 if there are no stones left.
+
+In this problem, we need to repeatedly find the 2 maximum elements. Let's convert stones into a max heap, so that we can pop the two maximum elements in O(log⁡n), perform the smash and then re-add to the heap (if the stones aren't both destroyed) in O(log⁡n). We can continue the process until there are one or zero stones left.
+
+```python
+import heapq
+
+class Solution:
+    def lastStoneWeight(self, stones: List[int]) -> int:
+        stones = [-stone for stone in stones]
+        heapq.heapify(stones) # turns an array into a heap in linear time
+        while len(stones) > 1:
+            first = abs(heapq.heappop(stones))
+            second = abs(heapq.heappop(stones))
+            if first != second:
+                heapq.heappush(stones, -abs(first - second))
+
+        return -stones[0] if stones else 0
+```
+
+
+
+>Python's heap implementation only implements min heaps. To simulate a max heap, we can just make all values we put on the heap negative.
+
+On each smash, at least one rock is destroyed, so there can be at most n iterations. At each iteration, we perform pops and pushes on the heap, which has a length of n at the start. This gives us a time complexity of O(n⋅log⁡n). The heap uses O(n) space. Note that in Python we are re-using the input, so we should count it towards the space complexity, which we wouldn't normally do.
+
+
+
+>Example 2: 2208. Minimum Operations to Halve Array Sum
+>
+>You are given an array nums of positive integers. In one operation, you can choose any number from nums and reduce it to exactly half the number. Return the minimum number of operations to reduce the sum of nums by at least half.
+
+What is the best way to choose numbers to halve? We want to minimize the steps, so we want to maximize the amount we reduce nums by at each step. This means at any given moment, we should choose the largest element. To track the largest element at any given time, let's convert the input into a max heap. At each step, we pop the maximum x off, remove x / 2 from the sum, and then push x / 2 back onto the heap.
+
+```python
+import heapq
+
+class Solution:
+    def halveArray(self, nums: List[int]) -> int:
+        target = sum(nums) / 2
+        heap = [-num for num in nums]
+        heapq.heapify(heap)
+        
+        ans = 0
+        while target > 0:
+            ans += 1
+            x = heapq.heappop(heap)
+            target += x / 2
+            heapq.heappush(heap, x / 2)
+        
+        return ans
+```
+
+
+
+>As you can see from the previous two examples, a heap is an amazing data structure when you need to repeatedly find the maximum or minimum element. It can handle insertions and removals all while maintaining the max/min property, all in logarithmic time.
+
+Each iteration of the loop takes O(log⁡n) time from the heap operations. The number of operations needed is linear with n. While you may be thinking: if we have a huge number, it would need to be halved many times. True, but each operation on it would also reduce the sum by a large amount. This gives us a time complexity of O(n⋅log⁡n).
+
+>A more clear argument as to why the number of operations is bounded by n - you could always just perform the operation on each number once.
+
+#### Two heaps
+
+Using multiple heaps is uncommon and the problems that require it are generally on the harder side. If a problem involves finding a median, it's a good thing to think about. The example we're about to look at involves medians and 480. Sliding Window Median can also be solved with two heaps, although we won't be including it as a practice problem as it is very difficult (you can still try it after if you want though).
+
+Like monotonic, this is a more difficult and rare concept. Don't be discouraged if you are having trouble understanding it.
+
+>Example 3: 295. Find Median from Data Stream
+>
+>The median is the middle value in an ordered integer list. If the size of the >list is even, the median is the average of the two middle values. Implement the >MedianFinder class:
+>
+>`MedianFinder()` initializes the MedianFinder object.
+>
+>`void addNum(int num)` adds the integer num to the data structure.
+>
+>d`ouble findMedian()` returns the median of all elements so far.
+
+The problem comes down to: find the middle element in a dataset that is continuously added to. How can we leverage heaps to find a middle element instead of a minimum or maximum?
+
+If we have a min heap that only stores the greater half of the data, then the element at the top of the heap will be in the middle. Similarly, if we have a max heap that only stores the lesser half of the data, the element at the top of the heap will be in the middle. If we represented the dataset as an array, you can imagine coloring the left half one color and the right half another color. The colors represent the coverage of each heap, and they "touch" at the middle, where the top of both heaps are.
+
+If we keep the heaps the same size, so that each heap is holding half of the data, then if there is an even number of elements, the median is the average of the values at the top of both heaps. When there is an odd number of elements, one heap will have a larger size than the other by one. That one extra element is the median. It doesn't matter which heap we choose to store the median in when there's an odd number - let's arbitrarily choose the max heap.
+
+<img src="./heaps-2.png" width="400" />
+
+When we add to the heap, we need to make sure that the difference between the heap's sizes stays the same (or within 1 if there's an odd number of elements). We also need to make sure that all the elements in the min heap are larger than or equal to all the elements in the max heap (otherwise the coloring analogy would be broken). To accomplish this, we can use the following algorithm:
+
+1. Push num onto the max heap (as mentioned above we arbitrarily chose the max heap).
+2. Pop from the max heap, and push that element onto the min heap.
+3. After step 2, if the min heap has more elements than the max heap, pop from the min heap and push the result onto the max heap.
+
+Again, let's imagine the dataset as an array split in half with different colors. When we pop from one heap and push the result to the other one, that's like sliding the point where the colors change over by one element.
+
+The 3rd step is how we maintain the decision we made to have the max heap store the extra element if there are an odd number of elements.
+
+>The 2nd step is how we maintain the property in bold font. Imagine if we had a data set 1, 3, 7, 13, 36, 100, and we wanted to add 50. We initially add it to the max heap in step 1, which makes the max heap 50, 7, 3, 1. Notice that it does not belong in the max heap because the 13 and 36 in the min heap are less. By popping from the max heap then pushing to the min heap, we maintain the property.
+>
+>Because we (arbitrarily) chose the max heap to be the heap that has more elements when the total number of elements is odd, we end up pushing the 13 off at the end and putting it on the max heap. After all operations, the max heap is 13, 7, 3, 1, and the median 13 is correctly positioned.
+
+```python
+import heapq
+
+class MedianFinder:
+    def __init__(self):
+        self.min_heap = []
+        self.max_heap = []
+
+    def addNum(self, num: int) -> None:
+        heapq.heappush(self.max_heap, -num)
+        heapq.heappush(self.min_heap, -heapq.heappop(self.max_heap))
+        if len(self.min_heap) > len(self.max_heap):
+            heapq.heappush(self.max_heap, -heapq.heappop(self.min_heap))
+
+    def findMedian(self) -> float:
+        if len(self.max_heap) > len(self.min_heap):
+            return -self.max_heap[0]
+        return (self.min_heap[0] - self.max_heap[0]) / 2
+```
+
+This algorithm allows us to have an O(1) time complexity for `findMedian` and an O(log⁡n) time complexity for `addNum`, which makes it an incredibly fast algorithm, where nn is the number of times `addNum` has been called so far. The space complexity is O(n) to store the heaps.
+
+Heaps are similar to hash maps and unlike trees/graphs or linked lists, in that normally when a heap is used, the problem isn't solely focused on the heap. A heap is usually just a tool to accomplish something in an algorithm efficiently. In the next chapter (greedy), we'll talk more about heaps and how they can help us implement efficient algorithms. Before that, we'll talk about a common pattern that uses heaps in the next article. In the meantime, try solving these practice problems.
+
+problems:
+https://leetcode.com/problems/remove-stones-to-minimize-the-total/description/  
+https://leetcode.ca/all/1167.html
+
+### Top k
+One common type of interview problem is one that asks you to find the k best elements, with "best" being defined by the problem. The easiest way to solve these problems is to just sort the input according to the criteria defined in the problem, and then return the top k elements. This has a time complexity of O(n⋅log⁡n) if n is the length of the input.
+
+Using a heap, we can instead find the top k elements in O(n⋅log⁡k). Logically, k < n, so this is an improvement. Practically, because log⁡ is so fast anyway, it probably isn't a big deal in terms of a speed increase. But when interviewers give you these kinds of problems, it is these small improvements that they are looking for.
+
+What is the improvement? Create a max heap at the start, iterate over the input while pushing every element on the heap (according to the problem's criteria), and pop from the heap once the size exceeds k. Because the heap's size is bounded by k, then all heap operations are at worst O(log⁡k). Multiply this by n iterations to get O(n⋅log⁡k). Because we are using a max heap and we are popping from the heap according to the problem criteria, pops remove the "worst" elements, so at the end, the k "best" elements will remain in the heap.
+
+Let's look at some examples.
+
+>Example 1: 347. Top K Frequent Elements
+>
+>Given an integer array nums and an integer k, return the k most frequent elements. It is guaranteed that the answer is unique.
+
+We can use a hash map to find and store the frequency of each element. Then, we can sort the hash map keys using a custom comparator (according to their values). This will result in a time complexity of O(n⋅log⁡n) where n = nums.length.
+
+When you pop from a min heap, it removes the smallest element in logarithmic time. We can find the frequencies using a hash map like before, and then put the keys with their frequencies in the heap. When the heap's size exceeds k, we can pop from the heap in O(log ⁡k) time. Since we limited the size of the heap to k, the heap will hold the k most frequent elements in the end, with a time complexity of O(n⋅log⁡k).
+
+```python
+from collections import Counter
+import heapq
+
+class Solution:
+    def topKFrequent(self, nums: List[int], k: int) -> List[int]:
+        counts = Counter(nums)
+        heap = []
+        
+        for key, val in counts.items():
+            heapq.heappush(heap, (val, key))
+            if len(heap) > k:
+                heapq.heappop(heap)
+        
+        return [pair[1] for pair in heap]
+```
+
+
+Given n as the length of nums, the time complexity of this algorithm is O(n⋅log⁡k). Counting the frequencies only costs O(n), which will be dominated. In the main loop, we iterate nn times and perform some heap operations. The size of the heap never exceeds kk, so each iteration costs O(log⁡k). The space complexity is O(k) for the heap.
+
+>Example 2: 658. Find K Closest Elements
+>
+>Given a sorted integer array arr, two integers k and x, return the k closest integers to x. The answer should also be sorted in ascending order. If there are ties, take the smaller elements.
+
+In the last problem, we wanted the maximum frequencies, so we put the frequencies in a heap. In this problem, we want the minimum differences, so let's put the differences in a heap. When we wanted the maximums, we used a min heap so that pops would remove the smaller elements. In this problem, we want the smallest differences, so if we use a max heap, then pops will remove the largest differences.
+
+The problem states that ties should be decided by taking the smaller element. For example, let's say we have x = 5 and two numbers 3, 7. Both have an equal distance of 2, but we should consider the 3 as having a "better" score since it is less than 7.
+
+How do we handle ties with a heap? This is dependent on the language you are using. In a language like Python or C++, you can put an ordered collection (like a tuple or list) in the heap, and it will go through each entry individually to determine the value. Using the same example with x = 5 and 3, 7, we could push both (2, 3) and (2, 7) to our max heap. The first element 2 in these tuples indicates the difference from x = 5. The second element in these tuples are the elements themselves. When determining which tuple has a "larger" value, the heap will compare the first position and see that they are equal. It will then move to the second position and see that 7 > 3, and thus 7 would be popped first.
+
+In a language like Java, you will need to implement a custom comparator which is a function that explicitly tells your heap how to handle the tiebreak case.
+
+```python
+import heapq
+
+class Solution:
+    def findClosestElements(self, arr: List[int], k: int, x: int) -> List[int]:
+        heap = []
+        
+        for num in arr:
+            distance = abs(x - num)
+            heapq.heappush(heap, (-distance, -num))
+            if len(heap) > k:
+                heapq.heappop(heap)
+        
+        return sorted([-pair[1] for pair in heap])
+```
+
+The time complexity of this algorithm is O((n+k)⋅log⁡k), where n is the length of the input array. The heap size never grows beyond k, so the push and pop operations are O(log⁡k), which we perform n times. Then, we need O(k⋅log⁡k) at the end to sort the output. This algorithm is actually pretty slow compared to other approaches since it does not exploit the fact that the input array is sorted - but we're using it as an example of how heaps can be used in "top k" problems. This approach is still faster than sorting with a custom comparator, which is the trivial approach.
+
+This pattern is a relatively straightforward one but still a good one to know because interviewers will be looking for any and all optimizations. Try solving the next problem using this method before moving on.
+
+problems:
+- https://leetcode.com/problems/kth-largest-element-in-an-array/
+- https://leetcode.com/problems/k-closest-points-to-origin/
+- https://leetcode.com/problems/kth-largest-element-in-a-stream/description/
+
 ## Greedy
 ### Greedy algorithms
 A greedy algorithm is any algorithm that makes the locally optimal decision at every step.
@@ -4313,8 +4596,6 @@ class Solution:
 To sort potions, it costs O(m⋅log ⁡m). Then, we iterate n times, performing a O(log⁡ m) binary search on each iteration. This gives us a time complexity of O((m+n)⋅log⁡m), which is much faster than O(m⋅n)because log⁡ m is small. Because we are sorting the input, some space is used depending on the sorting algorithm used by your language.
 
 Binary searching on an array is a simple tool to improve an algorithm's time complexity by a huge amount. Anytime you have a sorted array (or are able to sort an array without consequence), consider using binary search to quickly find the insertion index of a desired element.
-
-
 
 
 ## Dynamic programming
@@ -5167,4 +5448,3 @@ Those are all the DP problems we'll be looking at in this chapter. Try these nex
 Problems:  
 https://leetcode.com/problems/unique-paths-ii/description/  
 https://leetcode.com/problems/minimum-falling-path-sum/description/
-
