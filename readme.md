@@ -41,6 +41,9 @@
 - [Binary search](#binary-search)
     - [Binary search](#binary-search-1)
     - [On arrays](#on-arrays)
+- [Backtracking](#backtracking)
+    - [Generation](#generation)
+    - [More constrained backtracking](#more-constrained-backtracking)
 - [Dynamic programming](#dynamic-programming)
 
 ## Introduction
@@ -4597,6 +4600,332 @@ To sort potions, it costs O(m⋅log ⁡m). Then, we iterate n times, performing 
 
 Binary searching on an array is a simple tool to improve an algorithm's time complexity by a huge amount. Anytime you have a sorted array (or are able to sort an array without consequence), consider using binary search to quickly find the insertion index of a desired element.
 
+
+## Backtracking
+### Backtracking
+The most brute force way to solve a problem is through exhaustive search. Generate all possibilities and then check each of them for a solution.
+
+Imagine you had the letters a-z and were asked to generate strings of length n using the letters. There are 26n26n possibilities, as each of the n letters could be a-z. You can imagine all possibilities as a tree. The root is the empty string "", and then all nodes have 26 children, with the path from the root representing the string being built. So if you started at the root and went to the "g" node, then from that node went to the "p" node, that would represent the string "gp". The depth of the tree is n, and the leaf nodes represent answers.
+
+![backtracking](backtracking-1.png)
+
+Now, let's say we added a constraint so that instead of all solutions of length n, we only want ones that meet the constraint. An exhaustive search would still generate all strings of length n as "candidates", and then check each one for the constraint. This would have a time complexity of O(k⋅26n), where k is the work it costs to check if a string meets the constraint. This time complexity is ridiculously slow.
+
+Backtracking is an optimization that involves abandoning a "path" once it is determined that the path cannot lead to a solution. The idea is similar to binary search trees - if you're looking for a value x, and the root node has a value greater than x, then you know you can ignore the entire right subtree. Because the number of nodes in each subtree is exponential relative to the depth, backtracking can save huge amounts of computation. Imagine if the constraint was that the string could only have vowels - an exhaustive search would still generate all 26n26n strings, and then check each one for if it only had vowels. With backtracking, we discard all subtrees that have non-vowels, improving from O(26n) candidates to O(5n).
+
+![backtracking-2](backtracking-2.png)
+
+    Abandoning a path is also sometimes called "pruning".
+
+    To summarize the difference between exhaustive search and backtracking:
+
+    In an exhaustive search, we generate all possibilities and then check them for solutions. In backtracking, we prune paths that cannot lead to a solution, generating far fewer possibilities.
+
+Backtracking is a great tool whenever a problem wants you to find all of something, or there isn't a clear way to find a solution without checking all logical possibilities. On LeetCode, a strong hint that you should use backtracking is if the input constraints are very small (n <= ~15), as backtracking algorithms usually have exponential time complexities.
+
+Unfortunately in an interview, you will not usually be told the constraints, and even if you try to clarify with the interviewer, they will give a vague answer or just tell you to do your best. This is why it's important to build a good intuition for recognizing when to use a certain algorithm.
+
+Implementation
+
+Backtracking is almost always implemented with recursion - it really doesn't make sense to do it iteratively. In most backtracking problems, you will be building something, either directly (like modifying an array) or indirectly (using variables to represent some state). Here is some pseudocode for a general backtracking format:
+
+```
+// let curr represent the thing you are building
+// it could be an array or a combination of variables
+
+function backtrack(curr) {
+    if (base case) {
+        Increment or add to answer
+        return
+    }
+
+    for (iterate over input) {
+        Modify curr
+        backtrack(curr)
+        Undo whatever modification was done to curr
+    }
+}
+```
+Let's think back to the analogy of possibilities being represented by a tree.
+
+Each call to the function backtrack represents a node in the tree. Each iteration in the for loop represents a child of the current node, and calling backtrack in that loop represents moving to a child.
+
+The line where you undo the modifications is the "backtracking" step and is equivalent to moving back up the tree from a child to its parent.
+
+At any given node, the path from the root to the node represents a candidate that is being built. The leaf nodes are complete solutions and represent when the base case is reached. The root of this tree is an empty candidate and represents the scope that the original backtrack call is being made from.
+
+In this chapter, we will use trees to represent the backtracking process, as it is a very intuitive way to think about these problems.
+
+### Generation
+One common type of problem that can be solved with backtracking are problems that ask you to generate all of something.
+
+    Example 1: 46. Permutations
+
+    Given an array nums of distinct integers, return all the possible permutations in any order.
+
+    For example, given nums = [1, 2, 3], return [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]].
+
+A permutation contains all the elements of nums with no duplicates. Let's build each permutation using a recursive function backtrack(curr), where curr is the current permutation being built. The base case would be when curr.length == nums.length - we have completed a permutation and can't go further. On the base case, add curr to the answer and return.
+
+To build all permutations, we need all elements at the first index, and for each of those elements, we need all other elements at the second index, and so on. Therefore, we should loop over the entire input on each call to backtrack. Because a permutation cannot have duplicates, we should check if a number is already in curr before adding it to curr. Each call to backtrack is like a visit to a node in the tree of possibilities.
+
+Using nums = [1, 2, 3], the answer "tree" looks like:
+
+![backtracking-3](backtracking-3.png)
+
+```python
+class Solution:
+    def permute(self, nums: List[int]) -> List[List[int]]:
+        def backtrack(curr):
+            if len(curr) == len(nums):
+                ans.append(curr[:])
+                return
+        
+            for num in nums:
+                if num not in curr:
+                    curr.append(num)
+                    backtrack(curr)
+                    curr.pop()
+            
+        ans = []
+        backtrack([])
+        return ans
+```
+
+
+
+    When adding to the answer, we need to create a copy of curr because curr is only a reference to the array's address.
+
+The time complexity of this algorithm is very slow, but the input says that 1 <= nums.length <= 6, so it is to be expected. Let n = nums.length. The initial call to backtrack (the "root" of the tree), makes n calls. Each of those calls makes n - 1 calls (avoiding duplicates), and each of those makes n - 2, and so on. As such, we can expect approximately O(n!) calls. In the function, we have a loop over the nn input elements, and in each iteration, we check if num is already in curr, which costs O(n). Thus, we can estimate each function call to cost about O(n^2). Note that we could optimize this process by keeping track of elements in curr using a separate hash set, allowing us to perform the checks in O(1).
+
+Now, using this logic, we could say that the time complexity is O(n^2⋅n!), or O(n⋅n!) if we implemented the optimization. However, this is not the true time complexity of the algorithm. The true time complexity is extremely complicated and requires higher-level mathematics. It is typical for backtracking problems to have very difficult to calculate time complexities - but as long as you present the logic like we have here, you will be fine in an interview.
+
+    Example 2: 78. Subsets
+
+    Given an integer array nums of unique elements, return all subsets in any order without duplicates.
+
+    For example, given nums = [1, 2, 3], return [[],[1],[2],[1,2],[3],[1,3],[2,3],[1,2,3]]
+
+This example is similar to the previous one. There are two main differences: - Length: a subset can have any length, whereas a permutation has a fixed length n. - Order of elements: [1, 2, 3] and [3, 2, 1] are different permutations, but they are the same subset.
+
+Notice that in the example solution, every answer is sorted - for every number nums[i], only numbers after index i show up after it. To avoid duplicates while still finding every subset, we can pass an integer i into our backtrack function that represents where we should start iterating. When we loop over the input, we loop over [i, n) instead of [0, n). On calls to backtrack, we can pass in the index of the number we are adding plus one to make sure we only include numbers after the one we are adding for the rest of the subtree.
+
+    This is a very common method of avoiding duplicates in backtracking problems - having an integer argument that represents a starting point for iteration at each function call.
+
+```python
+class Solution:
+    def subsets(self, nums: List[int]) -> List[List[int]]:
+        def backtrack(curr, i):
+            if i > len(nums):
+                return
+
+            ans.append(curr[:])
+            for j in range(i, len(nums)):
+                curr.append(nums[j])
+                backtrack(curr, j + 1)
+                curr.pop()
+
+        ans = []
+        backtrack([], 0)
+        return ans
+```
+
+This time our base case is when i > nums.length - we have run out of numbers to use. The modification of curr and the undoing of the modification remain the same.
+
+    You may notice that the base case is never actually hit because the function can't be called with an argument greater than the length of the input. We have included the condition for clarity.
+
+There are 2^n subsets, where n is the length of the input array - for each element, we can either take it or not take it. For the time complexity, you can think of the algorithm as a DFS on a tree with 2^n nodes. At each node, we make a copy of curr, so the time complexity is O(n⋅2^n). The space complexity is O(n) for curr and the recursion call stack.
+
+    Example 3: 77. Combinations
+
+    Given two integers n and k, return all combinations of k numbers out of the range [1, n] in any order.
+
+    For example, given n = 4, k = 2, return [[2,4],[3,4],[2,3],[1,2],[1,3],[1,4]].
+
+Upon inspection, the problem is asking for all subsets of the range [1, n] that are length k. We can use the exact same algorithm as above, switching when we add curr to the answer from every call to just the base case. We could create an array with numbers from 1 to n, but that would be a waste of space - we can just use the for loop's iteration integer.
+
+```python
+class Solution:
+    def combine(self, n: int, k: int) -> List[List[int]]:
+        def backtrack(curr, i):
+            if len(curr) == k:
+                ans.append(curr[:])
+                return
+            
+            for num in range(i, n + 1):
+                curr.append(num)
+                backtrack(curr, num + 1)
+                curr.pop()
+        
+        ans = []
+        backtrack([], 1)
+        return ans
+```
+
+The time complexity of this algorithm is very difficult to derive. It is O(k⋅n!/((n−k)!⋅k!)). In an interview, it's understandable if you can't find the exact time complexity, but you should still do your best.
+
+A good strategy is to find the upper bound on the time complexity. On the first call, the for loop runs n times. The next call can run n - 1 times, then the next n - 2 and so forth, which leads to O(n!). However, the max depth is k - which means the factorial's multiplication doesn't go down to 1, it goes down to n - k, so we need to divide our factorial by (n - k)!.
+
+We also need to copy each combination which costs O(k) - this gives us O(k⋅n!/(n−k)!, which is a good approximation of the actual time complexity. Any interviewer should be satisfied with an answer like this, provided you explain your thought process.
+
+The space complexity is O(k) for curr and the recursion call stack.
+
+As you can see, the idea and code behind each of these problems is very similar. Remember to model the problem as a tree, and then figure out what children each node should have. Try these upcoming practice problems on your own before moving on.
+
+https://leetcode.com/problems/all-paths-from-source-to-target/description/  
+https://leetcode.com/problems/letter-combinations-of-a-phone-number/description/
+
+### More constrained backtracking
+Generation problems are relatively straightforward and usually follow the same format - let's take a look at some other backtracking problems.
+
+    Example 1: 39. Combination Sum
+
+    Given an array of distinct positive integers candidates and a target integer target, return a list of all unique combinations of candidates where the chosen numbers sum to target. The same number may be chosen from candidates an unlimited number of times. Two combinations are unique if the frequency of at least one of the chosen numbers is different.
+
+Because the problem is asking us to generate combinations, we can reuse some of the logic from the previous article. To avoid duplicates, for example [2, 2, 3] and [2, 3, 2], we should pass an integer variable start that indicates where we start iterating (same purpose as i in the previous article). In the previous problems, if we were adding the ithith element, we would pass i + 1, because we were not allowed to use the same element more than once. In this problem, we are allowed to use the same element multiple times, so we should pass i instead.
+
+We need to find combinations that sum up to target. To keep track of the current sum, we can pass an integer variable curr. If adding to curr would make it exceed target, we know that we shouldn't explore that path further. If curr == target, then we know we can add it to our answer.
+
+```python
+class Solution:
+    def combinationSum(self, candidates: List[int], target: int) -> List[List[int]]:
+        def backtrack(path, start, curr):
+            if curr == target:
+                ans.append(path[:])
+                return
+
+            for i in range(start, len(candidates)):
+                num = candidates[i]
+                if curr + num <= target:
+                    path.append(num)
+                    backtrack(path, i, curr + num)
+                    path.pop()     
+        
+        ans = []
+        backtrack([], 0, 0)
+        return ans
+```
+
+The time complexity of this algorithm is approximately O(n^(T/M)), where n = candidates.length, T = target, and M = min(candidates). Recall that recursion in general can be thought of as a tree. The maximum depth of the tree in this problem is T/M​ - using the smallest number repeatedly until we exceed target. Each node in the tree can have up to n children, which gives us O(n^(T/M)).
+
+If not counting the output as extra space, the space used in this problem is for path, and the recursion call stack, both of which are O(T/M).
+
+    Example 2: 52. N-Queens II
+
+    The N-Queens puzzle is the famous problem of placing n queens on an n x n chessboard such that no two queens attack each other. Given an integer n, return the number of distinct solutions to the N-Queens puzzle.
+
+    For those who don't play chess: a queen can attack along the row, column, and diagonals it occupies.
+
+The n-queens puzzle is a classic backtracking example and is actually a very common problem that is used in university and college classes to teach backtracking. In this problem, we need to place n queens, with only one queen on each row, column, diagonal and anti-diagonal.
+
+Starting with row: that's easy. We can just consider one row per backtrack call - we can pass row as an argument, and when row = n, we know we have found a valid solution.
+
+For columns: we have columns numbered from [0, n), and we can only have one queen in each column. We can use a set cols that stores the columns which are already occupied. When we add a queen, we can add the column to cols, and when we backtrack and remove the queen, we can remove the column from cols.
+
+For the diagonals and anti diagonals (diagonal goes from top left to bottom right, anti diagonal is from top right to bottom left), we can make use of a clever trick.
+
+All squares on a diagonal share the same value for row - col. Because diagonals move down and right, both row and col get incremented, so their difference never changes. We can use a set like with the columns to make sure we don't place multiple queens on the same diagonal.
+
+![nqueens](nqueens.png)
+
+All squares on an anti diagonal share the same value for row + col. Because anti diagonals move down and left, row gets incremented while col gets decremented, so their sum never changes. We can use a set like with the columns and diagonals to make sure we don't place multiple queens on the same anti diagonal.
+
+![nqueens2](nqueens2.png)
+
+For each row, we can iterate over the columns, calculate the value of the current square's diagonal and anti diagonal, and check to make sure that none of the three are occupied already. In terms of implementation, we can use the general format.
+
+```python
+class Solution:
+    def totalNQueens(self, n):
+        def backtrack(row, diagonals, anti_diagonals, cols):
+            # Base case - N queens have been placed
+            if row == n:
+                return 1
+
+            solutions = 0
+            for col in range(n):
+                curr_diagonal = row - col
+                curr_anti_diagonal = row + col
+                # If the queen is not placeable
+                if (col in cols 
+                      or curr_diagonal in diagonals 
+                      or curr_anti_diagonal in anti_diagonals):
+                    continue
+
+                # "Add" the queen to the board
+                cols.add(col)
+                diagonals.add(curr_diagonal)
+                anti_diagonals.add(curr_anti_diagonal)
+
+                # Move on to the next row with the updated board state
+                solutions += backtrack(row + 1, diagonals, anti_diagonals, cols)
+
+                # "Remove" the queen from the board since we have already
+                # explored all valid paths using the above function call
+                cols.remove(col)
+                diagonals.remove(curr_diagonal)
+                anti_diagonals.remove(curr_anti_diagonal)
+
+            return solutions
+
+        return backtrack(0, set(), set(), set())
+```
+
+The true time complexity of this algorithm isn't actually known, but it's approximately O(n!). The argument is that the first call will consider n options. The next call will consider n - 2 options, because one square will occupy the same column, and at least one square will occupy a diagonal/anti diagonal. The pattern continues, as the next call after that will consider n - 4 squares and so on. The space complexity is O(n) due to the sets and the recursion call stack.
+
+    Example 3: 79. Word Search
+
+    Given an m x n grid of characters board and a string word, return true if word exists in the grid. The word can be constructed from letters of sequentially adjacent cells, where adjacent cells are horizontally or vertically neighboring. The same letter cell may not be used more than once.
+
+![wordsearch](wordsearch.png)
+
+The input should look familiar - it is a graph where each square is a node and there are edges between adjacent squares. The reason this problem is backtracking and not just DFS is because we may visit a square multiple times on the same initial function call. While we aren't allowed to use a square more than once for the answer, there are multiple ways to use a square to form different candidates. For example, if we are starting at (0, 0), then going right and then down is a different path than going down and then right.
+
+We should still use a set seen like we did with DFS to avoid using the same letter in the same path, but unlike in DFS, we will remove from this set when backtracking. We should only traverse an edge if we know that the path could lead us to an answer - therefore, we can also pass an index variable i that indicates we are currently looking for word[i], and then only move to (nextRow, nextCol) if it is the correct letter. Because the answer could start from any square, we need to start backtracking from all squares that have word[0].
+
+To summarize: we use a DFS-esque algorithm to traverse paths, using a set to avoid using a square multiple times in the same path. We slowly try to build the word by only traversing to squares that have the next letter.
+
+```python
+class Solution:
+    def exist(self, board: List[List[str]], word: str) -> bool:
+        def valid(row, col):
+            return 0 <= row < m and 0 <= col < n
+
+        def backtrack(row, col, i, seen):
+            if i == len(word):
+                return True
+
+            for dx, dy in directions:
+                next_row, next_col = row + dy, col + dx
+                if valid(next_row, next_col) and (next_row, next_col) not in seen:
+                    if board[next_row][next_col] == word[i]:
+                        seen.add((next_row, next_col))
+                        if backtrack(next_row, next_col, i + 1, seen):
+                            return True
+                        seen.remove((next_row, next_col))
+            
+            return False
+
+        directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+        m = len(board)
+        n = len(board[0])
+
+        for row in range(m):
+            for col in range(n):
+                if board[row][col] == word[0] and backtrack(row, col, 1, {(row, col)}):
+                    return True
+        
+        return False
+```
+
+The time complexity of this algorithm is O(n⋅m⋅3^L), where L = word.length. Thinking of the solution space tree, each node can have 3 children (not 4, because we don't consider the square where we came from, thus each node has at most 3 children, except the first node). The maximum depth is L, so this gives us 3^L nodes. We also have n⋅m squares that we can start from. This time complexity would occur in the worst-case scenario if we had a grid with only one letter, and the word was also only that one letter, plus a different letter at the end. For example, board = [["A", "A", "A"],["A", "A", "A"],["A", "A", "A"]], word = "AAAAAAAAZ". The space complexity is O(L) due to the recursion call stack and seen if it is a set. If using a boolean array, the space complexity is instead O(n⋅m).
+
+As you can see from the examples we have solved, backtracking problems all follow a very similar format. The main difference between problems is how to represent the state of each "node". Try these practice problems before moving on to the quiz and the next chapter.
+
+Problems:
+https://leetcode.com/problems/generate-parentheses/description/  
+https://leetcode.com/problems/numbers-with-same-consecutive-differences/description/   
+https://leetcode.com/problems/combination-sum-iii/description/
 
 ## Dynamic programming
 ### Dynamic programming
